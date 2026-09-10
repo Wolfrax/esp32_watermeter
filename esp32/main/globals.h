@@ -17,8 +17,10 @@
 
 // Plain-text manifest: first whitespace-separated token is the target
 // version string, second is the firmware .bin URL. Matches the
-// esp32_watertank project's OTA convention.
-#define OTA_MANIFEST_URL "http://wolfrax.local:8000/watermeter/manifest.txt"
+// esp32_watertank project's OTA convention. Served from this repo's
+// own ota/ directory (see ota/README.md) — no project-name path
+// segment needed since each project now serves from its own folder.
+#define OTA_MANIFEST_URL "http://wolfrax.local:8000/manifest.txt"
 
 // mosquitto broker on rpi7 (see Wolfrax/homeassistant-config docs) —
 // shares the host network with the homeassistant container, reachable
