@@ -1,0 +1,28 @@
+idf_component_register(
+    SRCS
+        "wifi.c"
+        "ota.c"
+        "pn5180.c"
+        "pn5180_iso15693.c"
+        "watermeter.c"
+        "mqtt_app.c"
+        "main.c"
+    INCLUDE_DIRS "."
+    PRIV_REQUIRES
+        mdns
+        esp_wifi
+        esp_event
+        esp_netif
+        nvs_flash
+        esp_driver_gpio
+        esp_driver_spi
+        esp_timer
+        mqtt
+        esp-tls
+        mbedtls
+        app_update
+        esp_app_format
+        esp_http_client
+        esp_https_ota
+        cjson
+)
