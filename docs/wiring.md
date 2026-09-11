@@ -144,7 +144,7 @@ ends up using:
    separate UART-bridge port (used only if CDCOnBoot is left
    Disabled). Use the native one for both flashing and monitoring.
 4. Only after that checkpoint passes, move to the production firmware
-   (WiFi, MQTT to rpi4.local, OTA, Home Assistant integration).
+   (WiFi, MQTT to rpi7.local, OTA, Home Assistant integration).
 
 ### Toolchain used for the bring-up test
 

@@ -4,27 +4,25 @@ WiFi-connected ESP32 reader for the household water meter (Sagemcom Siconia
 WM20-L / SK20-MI001-SMU061, installed by VASYD), publishing consumption to
 Home Assistant.
 
-Status: **hardware bring-up validated end-to-end (2026-09-10)** — the
-ESP32-C6 + PN5180 reader, wired per [docs/wiring.md](docs/wiring.md),
-read the meter's tag live and matched the known UID, capturing the
-first complete 512-byte dump (see
-[docs/findings.md](docs/findings.md#validated-full-read-via-esp32-c6--pn5180-2026-09-10)).
-Production firmware (WiFi, MQTT, OTA, Home Assistant) not started yet
-— the current code is only the throwaway bring-up sketch in
-[bringup/](bringup/).
+Status: **production firmware flashed and confirmed working end-to-end
+(2026-09-10)** — the ESP32-C6 + PN5180 reader, wired per
+[docs/wiring.md](docs/wiring.md), reads the meter's NFC tag, and
+publishes state + Home Assistant MQTT-discovery config to the
+`rpi7.local` broker, all verified live. See "Production firmware" below.
 
 The meter's LoRaWAN
 uplink is encrypted and off-limits, and its LCD is normally blank (only
 lights up on the physical wake button — not usable for automated reading).
 Instead, the meter exposes an **ISO 15693 NFC tag (ST25DV04K-I)** that holds
 plaintext daily consumption history. This has been read by hand with a
-phone (STMicroelectronics "NFC Tap" app) and the data format has been
-partially decoded — see [docs/findings.md](docs/findings.md).
+phone (STMicroelectronics "NFC Tap" app) and decoded, then confirmed
+against a full 512-byte dump captured by the ESP32+PN5180 reader — see
+[docs/findings.md](docs/findings.md).
 
-Next step: production firmware — WiFi, MQTT publish to `rpi4.local`,
-OTA updates, Home Assistant integration. See "Open decision" in
-[docs/wiring.md](docs/wiring.md) for the ESP-IDF vs. ESPHome framework
-choice still to be made.
+Remaining work: OTA manifest hosting is only manual/on-demand for now
+(see [ota/README.md](ota/README.md)), and the tag's daily update
+cadence is still being characterized empirically (see "Not done yet"
+below).
 
 ## Repo contents
 
@@ -80,13 +78,12 @@ as first scaffolded — cross-checked against `esp32_watertank`'s
 `globals.h`, which has the same host/broker documented).
 
 **Not done yet:**
-- Nothing is being served yet at `OTA_MANIFEST_URL` — `ota_check_and_update()`
-  degrades gracefully (logs + skips) until that's set up, matching how
-  `esp32_watertank` bootstraps a new project before its manifest exists.
+- OTA hosting is manual/on-demand only, not a permanent service — see
+  [ota/README.md](ota/README.md) for publishing an update and starting
+  the staging server.
 - WiFi credentials are filled in; MQTT has no auth configured
   (`MQTT_USERNAME`/`MQTT_PASSWORD` empty) — fine if the broker allows
   anonymous connections, same as `esp32_watertank`.
-- OTA manifest hosting (nothing served at `OTA_MANIFEST_URL` yet).
 
 **To build:**
 
