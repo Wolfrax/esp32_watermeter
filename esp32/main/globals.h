@@ -51,13 +51,23 @@
 #define WATERMETER_VOLUME_BLOCK  11
 #define WATERMETER_DATE_BLOCK    12
 
+// TEMPORARY (added 2026-09-12): full-tag-dump investigation, see
+// watermeter_debug.h. Set to 0 and reflash/OTA once the tag's update
+// cadence is known — that also restores the 30-minute poll interval
+// below, since both are gated off this one flag.
+#define WATERMETER_DEBUG_FULL_DUMP 1
+
 // Poll interval. Set deliberately short for now (not once-daily) to
 // empirically characterize when/how often the tag's "today" record
 // actually updates — see docs/findings.md "Validated: full read via
 // ESP32-C6 + PN5180" for why this isn't yet known to be exactly once
 // per day at a fixed time. Revisit once the update cadence is known;
 // once-daily polling is almost certainly sufficient long-term.
+#if WATERMETER_DEBUG_FULL_DUMP
+#define POLL_INTERVAL_MS  (5 * 60 * 1000)   // 5 minutes, while investigating (see above)
+#else
 #define POLL_INTERVAL_MS  (30 * 60 * 1000)  // 30 minutes
+#endif
 
 extern char ip_str[IP_STR_LEN];
 extern char hostname[HOSTNAME_LEN];

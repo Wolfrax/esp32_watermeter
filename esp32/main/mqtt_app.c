@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <string.h>
 #include <time.h>
 
@@ -17,6 +18,10 @@
 // — see homeassistant-config/mqtt.yaml for the matching sensor entry.
 #define STATE_TOPIC        "watermeter/state"
 #define AVAILABILITY_TOPIC "watermeter/availability"
+
+// TEMPORARY diagnostic-only (see watermeter_debug.h) — deliberately its
+// own topic, not retained, never meant to back a HA entity.
+#define DEBUG_DUMP_TOPIC   "watermeter/debug/tagdump"
 
 static esp_mqtt_client_handle_t s_client = NULL;
 static EventGroupHandle_t s_mqtt_event_group;
@@ -139,6 +144,50 @@ void mqtt_app_publish_reading(const watermeter_reading_t *reading, bool changed_
         esp_mqtt_client_publish(s_client, STATE_TOPIC, json, 0, 1, true);
         if (changed_since_last) {
             ESP_LOGI(TAG, "Tag value changed: %s", json);
+        }
+        free(json);
+    }
+    cJSON_Delete(root);
+}
+
+// TEMPORARY diagnostic-only, see watermeter_debug.h.
+void mqtt_app_publish_debug_dump(uint32_t crc32, const uint8_t *dump, size_t dump_len, bool changed)
+{
+    if (s_client == NULL) {
+        return;
+    }
+
+    time_t now;
+    time(&now);
+    struct tm tinfo;
+    gmtime_r(&now, &tinfo);
+    char ts[32];
+    strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", &tinfo);
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "ts", ts);
+    char crc_str[16];
+    snprintf(crc_str, sizeof(crc_str), "%08" PRIx32, crc32);
+    cJSON_AddStringToObject(root, "crc32", crc_str);
+    cJSON_AddBoolToObject(root, "changed", changed);
+
+    if (changed) {
+        // 2 hex chars/byte + terminator. dump_len is always
+        // WATERMETER_DEBUG_DUMP_BYTES (512) from the one real call site;
+        // guard defensively rather than trust that forever.
+        char hex[2 * 512 + 1];
+        size_t n = dump_len < 512 ? dump_len : 512;
+        for (size_t i = 0; i < n; i++) {
+            snprintf(hex + (i * 2), 3, "%02x", dump[i]);
+        }
+        cJSON_AddStringToObject(root, "hex", hex);
+    }
+
+    char *json = cJSON_PrintUnformatted(root);
+    if (json) {
+        esp_mqtt_client_publish(s_client, DEBUG_DUMP_TOPIC, json, 0, 0, false);
+        if (changed) {
+            ESP_LOGI(TAG, "Debug dump changed: crc32=%s", crc_str);
         }
         free(json);
     }

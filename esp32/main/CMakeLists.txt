@@ -5,6 +5,7 @@ idf_component_register(
         "pn5180.c"
         "pn5180_iso15693.c"
         "watermeter.c"
+        "watermeter_debug.c"
         "mqtt_app.c"
         "main.c"
     INCLUDE_DIRS "."

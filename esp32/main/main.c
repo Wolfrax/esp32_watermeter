@@ -17,6 +17,15 @@
 #include "watermeter.h"
 #include "wifi.h"
 
+#if WATERMETER_DEBUG_FULL_DUMP
+// TEMPORARY, see watermeter_debug.h — delete this block and the
+// matching one in poll_and_publish() once retired.
+#include "pn5180_iso15693.h"
+#include "watermeter_debug.h"
+static bool s_have_previous_dump_crc = false;
+static uint32_t s_previous_dump_crc = 0;
+#endif
+
 static pn5180_t s_pn5180;
 static bool s_have_previous = false;
 static watermeter_reading_t s_previous;
@@ -72,6 +81,27 @@ static void poll_and_publish(void)
 
     s_previous = reading;
     s_have_previous = true;
+
+#if WATERMETER_DEBUG_FULL_DUMP
+    // TEMPORARY, see watermeter_debug.h. Independent of the decode
+    // above: re-runs its own inventory so this can be deleted without
+    // touching watermeter.c/h at all.
+    if (reading.tag_present && reading.uid_match) {
+        uint8_t uid_lsb[8];
+        if (pn5180_iso15693_get_inventory(&s_pn5180, uid_lsb) == ISO15693_EC_OK) {
+            static uint8_t dump[WATERMETER_DEBUG_DUMP_BYTES];
+            if (watermeter_debug_dump_full(&s_pn5180, uid_lsb, dump)) {
+                uint32_t crc = watermeter_debug_crc32(dump, sizeof(dump));
+                bool dump_changed = !s_have_previous_dump_crc || crc != s_previous_dump_crc;
+                mqtt_app_publish_debug_dump(crc, dump, sizeof(dump), dump_changed);
+                s_previous_dump_crc = crc;
+                s_have_previous_dump_crc = true;
+            } else {
+                ESP_LOGW(TAG, "Debug full dump: block read failed, skipping this cycle");
+            }
+        }
+    }
+#endif
 }
 
 void app_main(void)
