@@ -6,6 +6,7 @@
 #include "globals.h"
 #include "cJSON.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "mqtt_client.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -23,6 +24,14 @@
 // own topic, not retained, never meant to back a HA entity.
 #define DEBUG_DUMP_TOPIC   "watermeter/debug/tagdump"
 
+// Remote reboot: lets a new OTA build (staged via manifest.txt) be
+// picked up without physical access, since ota_check_and_update() only
+// runs at boot. Publish anything to this topic, NOT retained, to
+// restart the device. Retained messages are deliberately ignored (see
+// mqtt_event_handler) — a stray retained publish here would otherwise
+// reboot-loop the device on every boot as soon as it (re-)subscribes.
+#define CMD_REBOOT_TOPIC   "watermeter/cmd/reboot"
+
 static esp_mqtt_client_handle_t s_client = NULL;
 static EventGroupHandle_t s_mqtt_event_group;
 
@@ -31,11 +40,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 {
     (void)handler_args;
     (void)base;
+    esp_mqtt_event_handle_t event = event_data;
 
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT connected");
             esp_mqtt_client_publish(s_client, AVAILABILITY_TOPIC, "online", 0, 1, true);
+            esp_mqtt_client_subscribe(s_client, CMD_REBOOT_TOPIC, 1);
             xEventGroupSetBits(s_mqtt_event_group, MQTT_CONNECTED_BIT);
             break;
         case MQTT_EVENT_DISCONNECTED:
@@ -44,6 +55,16 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
             break;
         case MQTT_EVENT_ERROR:
             ESP_LOGW(TAG, "MQTT error event");
+            break;
+        case MQTT_EVENT_DATA:
+            if (event->retain) {
+                break; // ignore, see CMD_REBOOT_TOPIC comment
+            }
+            if (event->topic_len == strlen(CMD_REBOOT_TOPIC) &&
+                strncmp(event->topic, CMD_REBOOT_TOPIC, event->topic_len) == 0) {
+                ESP_LOGW(TAG, "Reboot command received, restarting");
+                esp_restart();
+            }
             break;
         default:
             break;
