@@ -9,3 +9,10 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # have 8MB) — 4MB is the safe minimum assumption; adjust if a specific
 # board is confirmed to have more.
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# OTA_MANIFEST_URL/the .bin URL are plain http:// (trusted LAN, no TLS
+# — matches esp32_watertank's convention). Without this,
+# esp_https_ota() refuses to proceed at all ("No option for server
+# verification is enabled"), failing every update with
+# ESP_ERR_INVALID_ARG.
+CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y
