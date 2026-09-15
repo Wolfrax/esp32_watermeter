@@ -51,11 +51,14 @@
 #define WATERMETER_VOLUME_BLOCK  11
 #define WATERMETER_DATE_BLOCK    12
 
-// TEMPORARY (added 2026-09-12): full-tag-dump investigation, see
-// watermeter_debug.h. Set to 0 and reflash/OTA once the tag's update
-// cadence is known — that also restores the 30-minute poll interval
-// below, since both are gated off this one flag.
-#define WATERMETER_DEBUG_FULL_DUMP 1
+// TEMPORARY (added 2026-09-12, retired 2026-09-15): full-tag-dump
+// investigation, see watermeter_debug.h. Cadence confirmed once-daily
+// via a full continuous day of watermeter/debug/tagdump logging on
+// rpi7 (/var/log/watermeter-tagdump.log) — exactly one CRC32 change in
+// ~23.5h, matching the known volume/date record's own cadence. Set
+// back to 0, restoring the 30-minute poll interval below since both
+// are gated off this one flag.
+#define WATERMETER_DEBUG_FULL_DUMP 0
 
 // Poll interval. Set deliberately short for now (not once-daily) to
 // empirically characterize when/how often the tag's "today" record
