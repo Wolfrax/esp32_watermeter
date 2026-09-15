@@ -51,26 +51,12 @@
 #define WATERMETER_VOLUME_BLOCK  11
 #define WATERMETER_DATE_BLOCK    12
 
-// TEMPORARY (added 2026-09-12, retired 2026-09-15): full-tag-dump
-// investigation, see watermeter_debug.h. Cadence confirmed once-daily
-// via a full continuous day of watermeter/debug/tagdump logging on
-// rpi7 (/var/log/watermeter-tagdump.log) — exactly one CRC32 change in
-// ~23.5h, matching the known volume/date record's own cadence. Set
-// back to 0, restoring the 30-minute poll interval below since both
-// are gated off this one flag.
-#define WATERMETER_DEBUG_FULL_DUMP 0
-
-// Poll interval. Set deliberately short for now (not once-daily) to
-// empirically characterize when/how often the tag's "today" record
-// actually updates — see docs/findings.md "Validated: full read via
-// ESP32-C6 + PN5180" for why this isn't yet known to be exactly once
-// per day at a fixed time. Revisit once the update cadence is known;
-// once-daily polling is almost certainly sufficient long-term.
-#if WATERMETER_DEBUG_FULL_DUMP
-#define POLL_INTERVAL_MS  (5 * 60 * 1000)   // 5 minutes, while investigating (see above)
-#else
+// Poll interval. A 2026-09-12..15 investigation (5-min polling +
+// watermeter/debug/tagdump, see 6c774e8/cf30619) confirmed the tag's
+// daily-log record updates exactly once a day, so this doesn't need to
+// be shorter than that — see docs/findings.md "Validated: full read
+// via ESP32-C6 + PN5180".
 #define POLL_INTERVAL_MS  (30 * 60 * 1000)  // 30 minutes
-#endif
 
 extern char ip_str[IP_STR_LEN];
 extern char hostname[HOSTNAME_LEN];

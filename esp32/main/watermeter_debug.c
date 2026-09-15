@@ -1,5 +1,4 @@
-// See watermeter_debug.h. TEMPORARY diagnostic-only — safe to delete
-// once the tag's update cadence is known.
+// See watermeter_debug.h.
 
 #include "watermeter_debug.h"
 #include "pn5180_iso15693.h"

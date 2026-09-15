@@ -1,18 +1,16 @@
-// TEMPORARY diagnostic-only helper (added 2026-09-12, see project chat
-// log / docs/findings.md "Validated: full read via ESP32-C6 + PN5180").
+// Full-tag-dump helper (added 2026-09-12 as a temporary investigation,
+// kept permanently from 2026-09-15 — see docs/findings.md "Validated:
+// full read via ESP32-C6 + PN5180").
 //
-// Purpose: the known daily-log record (globals.h WATERMETER_*_BLOCK) is
-// confirmed to update once a day, but we don't yet know the tag's exact
-// update time, or whether any of the tag's still-undecoded byte ranges
-// (docs/findings.md "Not yet decoded") change more often than daily.
-// This module reads the tag's *entire* 512-byte memory each poll cycle
-// so that can be checked empirically, independent of the normal decode
-// path in watermeter.c (which is untouched).
-//
-// Intentionally its own file, not folded into watermeter.c: once the
-// update cadence is known, delete this file and its two call sites in
-// main.c/mqtt_app.[ch] (all guarded by WATERMETER_DEBUG_FULL_DUMP in
-// globals.h) to fully remove it.
+// The known daily-log record (globals.h WATERMETER_*_BLOCK) is
+// confirmed to update exactly once a day. Several of the tag's other
+// byte ranges are still undecoded (docs/findings.md "Not yet
+// decoded") — this module reads the tag's *entire* 512-byte memory so
+// those can be tracked over time (see main.c's call site: only run
+// once/day, when the known record itself rolls over), independent of
+// the normal decode path in watermeter.c (which is untouched).
+// Feeds docs/analyze_dump.py --diff and the persistent logger on rpi7
+// (/var/log/watermeter-tagdump.log).
 #ifndef WATERMETER_DEBUG_H
 #define WATERMETER_DEBUG_H
 

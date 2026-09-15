@@ -24,14 +24,12 @@ esp_err_t mqtt_app_wait_connected(uint32_t timeout_ms);
 // the tag's snapshot updates.
 void mqtt_app_publish_reading(const watermeter_reading_t *reading, bool changed_since_last);
 
-// TEMPORARY diagnostic-only (see watermeter_debug.h) — publishes to
-// watermeter/debug/tagdump (not retained, unrelated to the real state/
-// availability topics). Always publishes {ts, crc32}; only includes the
-// full dump as a hex string when `changed` is true, so routine traffic
-// stays tiny. Delete this declaration (and its mqtt_app.c definition,
-// and the call site in main.c) once WATERMETER_DEBUG_FULL_DUMP is
-// retired.
-void mqtt_app_publish_debug_dump(uint32_t crc32, const uint8_t *dump, size_t dump_len, bool changed);
+// Publishes a full-tag dump to watermeter/debug/tagdump (not retained,
+// unrelated to the real state/availability topics) — see
+// watermeter_debug.h. main.c only calls this once/day, when the known
+// volume/date record rolls over, so every call includes the full dump
+// as a hex string (no separate "changed" gating needed here).
+void mqtt_app_publish_debug_dump(uint32_t crc32, const uint8_t *dump, size_t dump_len);
 
 #ifdef __cplusplus
 }
