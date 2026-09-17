@@ -72,24 +72,41 @@ Scanning for BCD-encoded dates (`DD MM YY 00`, each nibble a valid decimal
 digit) found a repeating record structure:
 
 ```
-[4-byte volume, uint32 little-endian, units of 0.0001 m³] [4-byte date, BCD DD MM YY 00]
+[4-byte volume, uint32 little-endian, units of 0.001 m³ (1 L)] [4-byte date, BCD DD MM YY 00]
 ```
+
+> **Correction (2026-09-17):** this was originally documented as
+> `0.0001 m³` units, making every volume below (and everything decoded
+> since) read 10x too low. Caught when a *photo* of the physical LCD
+> (`0000268.247` m³) was compared against that same morning's raw tag
+> value — `vol_raw=268170` only lines up as `268.170 m³` (÷1000), not
+> `26.817 m³` (÷10000). The "confirmations" below were never wrong
+> about the record layout/offsets/cadence, only about the scale — both
+> manual LCD reads had apparently been transcribed by hand without a
+> photo to check against, and silently dropped a digit to match the
+> tag's already-computed (wrong-scale) value, so they never actually
+> caught the error. Table values below are corrected (×10 from what
+> was originally recorded); see `watermeter.c` / `analyze_dump.py` for
+> the code fix.
 
 Three consecutive daily entries were found (dump captured 2026-08-26):
 
 | Date | Volume |
 |---|---|
-| 2026-08-26 (today) | 26.3418 m³ |
-| 2026-08-25 | 26.3135 m³ |
-| 2026-08-24 | 26.2931 m³ |
+| 2026-08-26 (today) | 263.418 m³ |
+| 2026-08-25 | 263.135 m³ |
+| 2026-08-24 | 262.931 m³ |
 
-Daily deltas (~28 L, ~20 L) are plausible household usage. **Cross-checked
+Daily deltas (~280 L, ~200 L) are plausible household usage. **Cross-checked
 against ground truth**: the meter's live LCD (woken via the button, same
-day) showed **26.3620 m³** — slightly higher than the tag's "today" value
-of 26.3418 m³, consistent with the tag holding a **midnight snapshot**
+day) showed **~263.620 m³** — slightly higher than the tag's "today" value
+of 263.418 m³, consistent with the tag holding a **midnight snapshot**
 while the display shows the running total read later that day. This
 match is what confirms the decode is correct and the data is genuinely
-in the clear (unencrypted).
+in the clear (unencrypted). (The LCD figure here is reconstructed from
+the original manual transcription, `26.3620`, under the same ×10
+correction — not re-verified by photo since this bring-up predates the
+2026-09-17 photo check.)
 
 **Implication for the project**: this looks like a once-per-day snapshot,
 not a live counter. Good enough for daily consumption tracking / leak
@@ -132,26 +149,60 @@ attached to the meter and confirmed end-to-end:
 
   | Date | Volume |
   |---|---|
-  | 2026-09-10 (today) | 26.6908 m³ |
-  | 2026-09-09 | 26.6683 m³ |
-  | 2026-09-08 | 26.6495 m³ |
+  | 2026-09-10 (today) | 266.908 m³ |
+  | 2026-09-09 | 266.683 m³ |
+  | 2026-09-08 | 266.495 m³ |
 
-  (Deltas ~19–23 L/day.) The record layout, offsets, and rolling
-  daily-log behavior described above are confirmed correct against
-  live data 15 days after the original phone-based decode.
+  (Deltas ~190–230 L/day. Table corrected ×10, see 2026-09-17 note
+  above.) The record layout, offsets, and rolling daily-log behavior
+  described above are confirmed correct against live data 15 days
+  after the original phone-based decode — only the unit scale was
+  wrong, not caught until 2026-09-17.
 
 - **Confirmed the tag is a static once-daily snapshot, not live**,
   independently reproducing the original "not a live counter" finding
   above with a precise measurement: re-read the tag a few hours later
   the same day and it was **byte-for-byte identical** to the morning
   dump — nothing on the tag changes intraday. Meanwhile a manual LCD
-  reading taken at that second read showed **26.7033 m³**, vs. the
-  tag's still-frozen "today" value of **26.6908 m³** — a 0.0125 m³
-  (12.5 L) gap that's real same-day usage the tag hasn't recorded yet.
+  reading taken at that second read showed **~267.033 m³** (original
+  transcription `26.7033`, ×10 corrected, not photo-verified), vs. the
+  tag's still-frozen "today" value of **266.908 m³** — a 0.125 m³
+  (125 L) gap that's real same-day usage the tag hasn't recorded yet.
   Implication for polling design: polling more than once a day gets
   nothing extra; poll once daily, safely after the (likely midnight)
   snapshot write — e.g. once every few hours, or once around 01:00 —
   rather than relying on an exact write time.
+
+## Corrected: volume units were 10x too low (2026-09-17)
+
+A daily-usage figure computed from Home Assistant history (17.1 L for
+2026-09-14→15) looked suspiciously low for a household. A **photo** of
+the physical meter's LCD taken the same morning (07:39 CEST) settled
+it: display read `0000268.247` m³ (Sagemcom SK 20-MI001-SMU061, MID
+M23 0071). That morning's raw tag volume field (block 11, offset 44)
+was `vol_raw=268170` — `268.170 m³` at ÷1000, a plausible 0.077 m³
+(77 L) below the photo (consistent with real usage between the tag's
+frozen snapshot and 07:39), versus `26.817 m³` at the original ÷10000,
+off by exactly 10x.
+
+This means every volume decoded by this project before 2026-09-17 —
+both tables above and every reading published to
+`watermeter/state`/Home Assistant — was 10x too low. The record
+layout, offsets, and once-daily cadence were never wrong, only the
+scale factor. Fixed in `watermeter.c` (`vol_raw / 1000.0`) and
+`analyze_dump.py`. Historical Home Assistant data recorded before the
+firmware fix landed remains at the old, wrong scale — expect a 10x
+step in the history graph at the point the fix takes effect, not a
+real usage spike.
+
+**Lesson for future ground-truth checks**: a *photo* caught this in
+one look; the two earlier manual LCD transcriptions (2026-08-26,
+2026-09-10) that were meant to independently confirm the decode had
+each — by coincidence or by unconsciously matching the tag's own
+already-computed value — dropped a digit to land in the same `26.XXXX`
+shape as the (wrong-scale) tag reading, so they never caught the
+error. Prefer a photo over a hand-transcribed number for this kind of
+cross-check going forward.
 
 ## Prior art referenced
 

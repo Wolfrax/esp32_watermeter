@@ -1,9 +1,15 @@
 // See watermeter.h. Decode logic matches docs/analyze_dump.py /
 // docs/findings.md: a daily-log record is [4-byte LE uint32 volume,
-// units 0.0001 m3][4-byte BCD date DD MM YY 00]. The "today" record
-// was observed at a fixed location (blocks 11/12) across every
-// capture during bring-up; a small scan window is kept as a fallback
-// in case that ever shifts (e.g. after the tag fills up and wraps).
+// units 0.001 m3 (1 L)][4-byte BCD date DD MM YY 00]. Units corrected
+// 2026-09-17 — cross-checked against a photo of the physical LCD
+// (268.247 m3) against the same day's raw tag value (268170, i.e.
+// vol_raw/1000): the original 0.0001 m3 assumption was off by 10x
+// (see findings.md for how that first "confirmation" was itself based
+// on an unphotographed manual LCD transcription, not caught until now).
+// The "today" record was observed at a fixed location (blocks 11/12)
+// across every capture during bring-up; a small scan window is kept as
+// a fallback in case that ever shifts (e.g. after the tag fills up and
+// wraps).
 
 #include <string.h>
 
@@ -49,7 +55,7 @@ static bool decode_at(pn5180_t *dev, const uint8_t uid[8],
     uint32_t vol_raw;
     memcpy(&vol_raw, vol_bytes, 4); // LE, matches ESP32's native byte order
 
-    out->volume_m3 = vol_raw / 10000.0;
+    out->volume_m3 = vol_raw / 1000.0;
     out->year = 2000 + y;
     out->month = m;
     out->day = d;

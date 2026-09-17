@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Scan an ST25DV NFC memory dump from the water meter for BCD-encoded
-daily-history records: [4-byte LE uint32 volume, units of 0.0001 m3]
-followed by [4-byte BCD date DD MM YY 00].
+daily-history records: [4-byte LE uint32 volume, units of 0.001 m3 (1 L)]
+followed by [4-byte BCD date DD MM YY 00]. (Units corrected 2026-09-17
+— cross-checked against a physical LCD photo; the original 0.0001 m3
+assumption was off by 10x, see watermeter.c.)
 
 Usage:
   analyze_dump.py dumps/mem2.bin [dumps/other.bin ...]
@@ -39,7 +41,7 @@ def scan(data):
         before = data[max(0, i - 4):i]
         after = data[i + 4:i + 8]
         le_before = struct.unpack("<I", before)[0] if len(before) == 4 else None
-        vol = f"{le_before / 10000:.4f} m3" if le_before is not None else "?"
+        vol = f"{le_before / 1000:.3f} m3" if le_before is not None else "?"
         print(
             f"offset {i:3d} (0x{i:02x}): 20{by:02d}-{bm:02d}-{bd:02d}  "
             f"volume_field={before.hex()} LE={le_before} ({vol})  "
@@ -66,8 +68,8 @@ def _interpret(old, new):
     if len(old) == 4:
         lo, ln = struct.unpack("<I", old)[0], struct.unpack("<I", new)[0]
         guesses.append(
-            f"LE uint32: {lo} -> {ln} (delta {ln - lo:+d}; if x0.0001 m3: "
-            f"{lo / 10000:.4f} -> {ln / 10000:.4f})"
+            f"LE uint32: {lo} -> {ln} (delta {ln - lo:+d}; if x0.001 m3: "
+            f"{lo / 1000:.3f} -> {ln / 1000:.3f})"
         )
         od, om, oy, opad = old
         nd, nm, ny, npad = new
